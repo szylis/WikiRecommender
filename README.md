@@ -1,18 +1,25 @@
-WikiPage-Recommender
+WikiRecommender
 
-Wikipedia Page Recommender is a Python script using a machine learning techniques for retrieval the most similar wiki page to query article (query does not need to be a wiki page)
+Wikipedia Page Recommending System
+
+Copyright (C) 2016 Szymon Lis email: szymonlis@yahoo.com twitter: @drSzymonLis
+
+This program is distibuteted for free but WITHOUT ANY WARRANTY
+
+Description
+
+Wikipedia Recommender is a Python script using a machine learning techniques for retrieval the most similar wiki page to query article (query does not need to be a wiki page)
 The project was started in December 2016 by Szymon Lis. Project is still in early stage of development.
-
 
 Installation
 
 Dependencies
 
-Python (>= 2.7) [It might aslo work with Ptython >= 3.3]
-NumPy (>= 1.6.1)
-Pandas (0.18.1)
-Kitchen (1.2.4)
-ElementTree (1.0.1)
+- Python (>= 2.7) [It might aslo work with Ptython >= 3.3]
+- NumPy (>= 1.6.1)
+- Pandas (0.18.1)
+- Kitchen (1.2.4)
+- ElementTree (1.0.1)
   
 User installation
 
