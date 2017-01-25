@@ -1,6 +1,7 @@
 import locale
 import os
 import sys
+import time
 
 import pandas as pd
 
@@ -29,56 +30,58 @@ loadCorpusData = False
 
 #wikipedia dump xml to csv file
 if(saveWikiData):
-    SaveWikiDumpToCSV('PLWiki/PLwiki.xml', '.\Output\PLWiki_DF.csv', 100, 50)
-
+    SaveWikiDumpToCSV('PLWiki/PLwiki.xml', '.\Output\PLWiki_DF.csv', 1000, 50)
 
 #read data from csv file
 wikiDataFile = open('.\Output\PLWiki_DF.csv', 'r+')
 df_wikiData = pd.read_csv(filepath_or_buffer = wikiDataFile, encoding='utf-8')
 
-#count the word and create an array of dictionaries with word count
-df_wikiData = CountWords(df_wikiData)
+#add word count to the data matrix
+#word count represent a count of words in each page 
+#output: an input array plus a new column ['word count'] which contains a dictionary  (key -> word, value -> word count)
+#start = time.time()
+#df_wikiData = CountWords(df_wikiData)
+#end = time.time()
+
+#print 'Word count for each page -> time: ' + str(end - start) + 's'
+
+#translate the text to vector space
+#output:
+# data matrix with word count - PxF, where P - wiki pages, F - featers words 
+# mapping the words with coded index 
+start = time.time()
+sm_WordCount, mapping = VectorizeText(df_wikiData)
+end = time.time()
+
+print 'Text into vector space -> time: ' + str(end - start) + 's'
 
 
+#find the tf-idf for documents in corpus
+#input: the sparse matrix with word count
+#output: sparse matrix with tf-idf values
+start = time.time()
+sm_tfidf = TF_IDF_smatrix(sm_WordCount)
+end = time.time()
 
-if(not(loadCorpusData)):
-
-    #creat a spares matrix with whole corpus
-    #row (index) - single word
-    #column - wiki page
-    #value - (word count)
-    df_CorpusData = CorpusCountWords(df_wikiData)
-
-    #if data are big it might be worth to save it
-    df_CorpusData.to_pickle('.\Output\CorpusData')
-
-else:
-    df_CorpusData = pd.read_pickle('.\Output\CorpusData')
+print 'TF-IDF for each page -> time: ' + str(end - start) + 's'
 
 
-quarryPage = 42
+queryPage = 173
 
-NN = FindNearestNeighbor(df_CorpusData, quarryPage, 5)
+start = time.time()
+NN = NearestNeighbor(sm_tfidf, queryPage, 5)
+end = time.time()
+
+print 'kNearestNeighbor algorythm time: ' + str(end - start)
 
 
 print '--------------------------------------'
-print 'QUARRY: ' + df_wikiData['name'][quarryPage]
-#print df_wikiData['URI'][quarryPage]
+print 'QUERY: ' + df_wikiData['name'][queryPage]
+print df_wikiData['URI'][queryPage]
 print '--------------------------------------'
 print '--------------------------------------'
 
 for i in range(len(NN)):
     print str(i) + '-NEAREST: ' + df_wikiData['name'][NN[i]]
-
-#print df_wikiData['URI'][NN]
-print '--------------------------------------'
-#print '\n'
-#print 'TEXT:'
-#print '--------------------------------------'
-#print df_wikiData['text'][quarryPage]
-#print '\n'
-#print 'WORD COUNT'
-#print '--------------------------------------'
-#print df_wikiData['word count'][quarryPage]
 
 wikiDataFile.close()

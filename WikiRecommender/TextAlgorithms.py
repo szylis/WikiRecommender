@@ -1,32 +1,34 @@
 import pandas as pd
+import numpy as np
 from math import sqrt
 
 #imput data are dictionary with word as a kay and numeric value
-def EuclideanDistance(quarry, page):
+def EuclideanDistance(query, page):
 
-     x = (quarry - page)
-     x = pd.Series.transpose(x) * x
+     x = query - page
+     x = np.transpose(x) * x
      
      return sqrt(sum(x))
     
-
-
-    
-    
-
-    
-def FindNearestNeighbor(df_WikiCorpus, quarry, k=1):
+   
+def NearestNeighbor(model, query, k=1):
 
     distances = [float("inf")] * k
-    nearests = [quarry] * k
+    nearests = [query] * k
+
+    numberOfPages = (model.shape)[0]
+    querPage = np.array((model.todense())[query, :]).flatten()
 
     #iterate over all pages and count the distance
-    for i in range(len(df_WikiCorpus.columns)):
-        
-        #comput the distance between quarry page and pages in library       
-        if (i != quarry):
-        
-            temp_dist = EuclideanDistance(df_WikiCorpus[quarry], df_WikiCorpus[i])
+    for i in range(numberOfPages):
+
+        if(i%50 == 0):
+            print 'Progress: ' + str(i*100.0/numberOfPages) + '%'
+
+        #comput the distance between query page and pages in library       
+        if (i != query):
+
+            temp_dist = EuclideanDistance(querPage, np.array((model.todense())[i, :]).flatten())
 
             #check if the new distance to smaller than the istance to the last element in the list
             if (temp_dist < distances[-1]):
@@ -41,8 +43,6 @@ def FindNearestNeighbor(df_WikiCorpus, quarry, k=1):
 
                 distances = list(distances)
                 nearests = list(nearests)
-
-
 
     #return index of the nearest neighbor
     return nearests

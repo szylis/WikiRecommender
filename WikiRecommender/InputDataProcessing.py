@@ -2,8 +2,12 @@ import re
 import time
 import pandas as pd
 
+from math import log1p
 from TestFunctions import *
 
+# Machine Learning in Python
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
 
 
 #function for cleaning the wiki page
@@ -60,6 +64,7 @@ def StringCleanUp(s):
     return s
 
 #function counting word occurrence on the page
+#adding new column ['word count'] which contains dictionary (key -> word, value -> word count in page)
 def CountWords(df_inputData):
 
     wordsCount = {} #dictionar for word count 
@@ -96,6 +101,176 @@ def CountWords(df_inputData):
     return df_inputData
 
 
+
+#pass a element which you want to find,
+#and map to decode the value of element 
+def FindElementValue(elem, values, map):
+  
+     try: 
+        return values[0, map.index(elem)]
+
+     except ValueError:
+        return 0
+
+#function counting word occurrence on the page
+#adding new column ['word count'] which contains dictionary (key -> word, value -> word count in page)
+#this version is using a scikit for text
+def NewCountWords(df_inputData):
+    
+    wordsCount = {} #dictionar for word count 
+    tempWordCount = [] #creat temp array for word count
+
+    # check if there is text field in dictionary
+    if 'text' not in df_inputData.columns:
+        print 'ERROR: not text to work with'
+        return
+
+    #instance of Count Vectorizer
+    vectorizer = CountVectorizer()
+
+    #translate the text to vector space
+    #output data matrix with word count
+    # PxF, where P - wiki pages, F - featers words  
+
+    #I use fit_transform method on whole carpus. In the future I can split corpus for train and test set
+    #then I will use train set for finding the stop words and for build a model
+    #then using model I can analyse the whole corpus using transform method  
+    data = vectorizer.fit_transform((df_inputData['text']).tolist())
+
+    #list with all words, correspond to the value in data matrix
+    mapping = vectorizer.get_feature_names()
+
+    #loop over all pages
+    for k in range (len(df_inputData.index)):
+
+        #creat list of words from page text
+        words = df_inputData['text'][k].split()
+
+        #get the word count for k-th page - row access in data matrix
+        page_data = ((data.todense())[k,:])
+      
+        #each unique word is a key in dictionary - value represent occurrence of this word in text
+        for word in words:
+
+            #add word to dictionary 
+            #this is not efficient for long size text          
+            wordsCount[word] = FindElementValue(word, page_data, mapping)  
+               
+        #add current word count to the temp array
+        tempWordCount.append(wordsCount.copy())
+
+        #clear the list of word count before next iteration
+        wordsCount.clear()
+    
+    #creat a new column for word count
+    df_inputData['word count'] = tempWordCount
+
+    return df_inputData
+
+
+#translate the text to vector space
+#output:
+# data matrix with word count - PxF, where P - wiki pages, F - featers words 
+# mapping the words with coded index
+def VectorizeText(df_inputData):
+
+    # check if there is text field in dictionary
+    if 'text' not in df_inputData.columns:
+        print 'ERROR: not text to work with'
+        return
+
+    #instance of Count Vectorizer
+    vectorizer = CountVectorizer()
+
+    #translate the text to vector space
+    #output data matrix with word count
+    # PxF, where P - wiki pages, F - featers words  
+
+    #I use fit_transform method on whole carpus. In the future I can split corpus for train and test set
+    #then I will use train set for finding the stop words and for build a model
+    #then using model I can analyse the whole corpus using transform method  
+    data = vectorizer.fit_transform((df_inputData['text']).tolist())
+
+    #list with all words, correspond to the value in data matrix
+    mapping = vectorizer.get_feature_names()
+
+    return data, mapping
+
+
+
+def TF_IDF_smatrix(word_count):
+
+    tfidf = TfidfTransformer(norm="l2")
+
+    tfidf.fit(word_count)
+    # print "IDF: ", tfidf.idf
+        
+    tfidf_smatrix = tfidf.transform(word_count)
+
+    return tfidf_smatrix
+
+
+
+#function counting tf-idf for word on the page
+#adding new column ['tf-idf'] wihich contains dictionary (key - > word, value -> tf-idf for word in the page)
+def TF_IDF(df_inputData):
+
+    #creat temp array for tf-idf
+    temp_TF_IDF = [] 
+
+    #numbre of pages in whole corpus
+    totalNumberOfPages = len(df_inputData.index)
+
+    #loop over all pages
+    for k in range (totalNumberOfPages):
+             
+        # check if there is text field in dictionary
+        if 'text' in df_inputData.columns and 'word count' in df_inputData.columns:
+
+            # 1) first find the TF - term frequency
+            #    TF = (Number of times word appears in a document) / (Total number of words in the document).
+
+            # split text to the words
+            words = df_inputData['text'][k].split() 
+
+            # total number of words in the document
+            totalNumberOfWords = len(words) 
+
+            # make a copy of word count dictionary for single page
+            temp_dict = df_inputData['word count'][k].copy()
+
+            #interate through each key (word) in dictionary and compute the term frequency
+            for key, value in temp_dict.items():
+
+                # 2) second find the IDF - invers document frequency
+                #   IDF = log_e(Total number of documents / Number of documents with word in it).
+
+                # Number of documents with word in it
+                numberOfDocuments = 0
+
+                #loop over all page in corpus and find how many documents has searching word in it
+                for p in range (totalNumberOfPages):
+
+                    #check if page has this word
+                    if df_inputData['word count'][p].has_key(key):
+                        numberOfDocuments += 1       #yes, so increment value
+
+                #compute the tf-idf
+                temp_dict[key] = ((float(value))/totalNumberOfWords) / (log1p((float(totalNumberOfPages))/numberOfDocuments))
+
+
+            #add current tf dict to the temp tf-idf array
+            temp_TF_IDF.append(temp_dict.copy())
+            
+            #clear the list of tf before next iteration
+            temp_dict.clear()
+    
+    #creat a new column for tf-idf
+    df_inputData['tf-idf'] = temp_TF_IDF
+
+    return df_inputData
+
+
 #transforming the word count column to a new dataframe with (page_id, feature_id, word_count)
 def StackWordCount(df_corpus):
 
@@ -118,7 +293,12 @@ def StackWordCount(df_corpus):
     return x
 
 #function which creates a big sparse matrix with whole corpus words count
+#Creating 2D matrix (row -> page id; column -> word; value -> word count of the word in the page) 
+#matrix contain all word in the corpus
 def CorpusCountWords(df_corpus):
+
+
+    start = time.time()
 
     #loop over whole corpus
     for pageIndex in range(len(df_corpus)):
@@ -131,6 +311,10 @@ def CorpusCountWords(df_corpus):
         else:
             df_temp = pd.DataFrame(data=df_corpus['word count'][pageIndex], index=[pageIndex])
             frame = pd.concat([frame, df_temp])
+
+
+    end = time.time()
+    print 'Creating 2D matric for all pages, creation time :' + str(end-start)
 
     #fill NaN to 0.0
     frame = frame.fillna(0)
